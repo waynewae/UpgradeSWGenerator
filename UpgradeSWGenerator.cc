@@ -73,14 +73,23 @@ int main(int argc, char* argv[])
 	}
 
 	// reboot
-	WriteToHere << "\necho Update Complete. Reboot.\n"
-				<< "# reboot\n"
-				<< "fastboot -i 0x489 reboot\n"
-				<< "adb wait-for-device\n"
-				<< "sleep 60\n"
-				<< "echo \"\"\n"
-				<< "echo Reboot Success. Install AutoTestiong\n"
-				<< "echo \"\"";
+	WriteToHere << "\necho Update Complete\n"
+			<< "echo Reboot\n"
+			<< "# reboot\n"
+			<< "fastboot -i 0x489 reboot\n";
+
+	if(argv[3]) 
+	{
+		WriteToHere << "echo \"Please do following action:\"\n"
+				<< "echo \"1. Set default configuration\"\n"
+				<< "echo \"2. Pre-config the device\"\n"
+				<< "echo \"Device will reboot after 30s when you finish the pre-config\"\n";
+	}
+	WriteToHere << "adb wait-for-device\n"
+			<< "sleep 30\n"
+			<< "echo \"\"\n"
+			<< "echo Reboot complete\n"
+			<< "echo \"\"";
 
 	ReadFromHere.close();
 	WriteToHere.close();
