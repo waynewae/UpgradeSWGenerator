@@ -5,93 +5,81 @@
 
 using namespace std;
 
-int main(int argc, char* argv[])
-{
-	char line[100] = {0};
-	string temp;
-	string pkt_name;
-	string opt;
-	string img;
-	string act;
-	string mlf_folder = argv[1];
-	string mlf_file = argv[2];
-	string mlf_path = mlf_folder + mlf_file;
-
-	cout << mlf_path << endl;
-
-	fstream ReadFromHere;
+void OpenReadFile(string &mlf_path, fstream &ReadFromHere) {
 	ReadFromHere.open(mlf_path.c_str(), ios::in);
 	if(!ReadFromHere) cout << "Open " << mlf_path << " failed.\n";
 	else cout << "Open " << mlf_path << " successful.\n";
+}
 
-	fstream WriteToHere;
+void CloseReadFile(fstream &ReadFromHere) {
+	ReadFromHere.close();
+}
+
+void OpenWriteFile(fstream &WriteToHere) {
 	WriteToHere.open("UpgradeSW.sh", ios::out | ios::trunc);
-	if(!ReadFromHere) cout << "Open UpgradeSW.sh failed.\n";
+	if(!WriteToHere) cout << "Open UpgradeSW.sh failed.\n";
 	else cout << "Open UpgradeSW.sh successful.\n\n";
+}
 
-	WriteToHere << "# upgrade\nadb reboot bootloader\n";
+void CloseWriteFile(fstream &WriteToHere) {
+	WriteToHere.close();
+}
 
+string SelectOpt(string &Opt) {
+	if(!(Opt.compare("0x2"))) Opt.assign("flash") ;
+	if(!(Opt.compare("0x1000"))) Opt.assign("flash");
+	if(!(Opt.compare("0x4"))) Opt.assign("erase");
+	if(!(Opt.compare("0x8"))) Opt.assign("erase");
+	if(!(Opt.compare("0x1000000000000000"))) Opt.assign("IgnoreOpt");
+	if(!(Opt.compare("0x1"))) Opt.assign("skip");
+	return Opt;
+}
 
-	while(ReadFromHere.getline(line, sizeof(line), '\n'))
-	{
-		temp.assign(line);
-		if(!(temp.compare(0, 12, "PACKAGE_NAME")))
-		{
-			pkt_name = temp.substr(16);
-			pkt_name.erase(pkt_name.length()-1);
+void ParseInfo(fstream &ReadFromHere, string &line, string &PktName, string &Opt, string &ImgFile) {
+	string Act;
+	PktName = line.substr(16);
+	PktName.erase(PktName.length() - 1);
+	getline(ReadFromHere, line);	// skip BOOT_NAME
+	getline(ReadFromHere, line);
+	Act.assign(line.substr(9));
+	Opt = SelectOpt(Act);
+	getline(ReadFromHere, line);
+	ImgFile = line.substr(14);
+	ImgFile.erase(ImgFile.length() - 1);
+}
 
-			while(temp.compare(0, 10, "IMAGE_FILE"))
-			{
-				ReadFromHere.getline(line, sizeof(line), '\n');
-				temp.assign(line);
+void Parser(fstream &ReadFromHere, fstream &WriteToHere, string &MlfFolder) {
+	string line;
+	string PktName;
+	string Opt;
+	string ImgFile;
 
-				if(!(temp.compare(0, 6, "OPTION")))
-				{
-					opt = temp.substr(9);
-					act = "";
-					if(!(opt.compare("0x2"))) act = "flash";
-					if(!(opt.compare("0x1000"))) act = "flash";
-					if(!(opt.compare("0x4"))) act = "erase";
-					if(!(opt.compare("0x8")))
-						{
-							if(argv[3] && (!strcmp(argv[3], "1"))) act = "erase";
-							else act = "0x1";
-						}
-					if(!(opt.compare("0x1"))) act = "0x1";
-				}
-				if(!(temp.compare(0, 10, "IMAGE_FILE")))
-				{
-					img = temp.substr(14);
-					img.erase(img.length()-1);
-				}
-			}
-			if(!(act.compare("0x1"))) continue;
-			if(!(act.compare(""))) WriteToHere << "fastboot -i 0x489 " << pkt_name << endl;
-			else if(!(act.compare("erase"))) WriteToHere << "fastboot -i 0x489 " << act << " " << pkt_name << endl;
-			else WriteToHere << "fastboot -i 0x489 " << act << " " << pkt_name << " " << mlf_folder << img << endl;
+	while(getline(ReadFromHere, line)) {
+		if(line.find("PACKAGE_NAME") != string::npos) {
+			ParseInfo(ReadFromHere, line, PktName, Opt, ImgFile);
+			if(!(Opt.compare("IgnoreOpt"))) WriteToHere << "fastboot -i 0x489 " << PktName << endl;
+			else if(!(Opt.compare("erase"))) WriteToHere << "fastboot -i 0x489 " << Opt << " " << PktName << endl;
+			else if(Opt.compare("skip")) WriteToHere << "fastboot -i 0x489 " << Opt << " " << PktName << " " << MlfFolder << ImgFile << endl;
 		}
 	}
+}
 
-	// reboot
-	WriteToHere << "\necho Update Complete\n"
-			<< "echo Reboot\n"
-			<< "# reboot\n"
-			<< "fastboot -i 0x489 reboot\n";
+int main(int argc, char* argv[]) {
+//int main() {
+//	string MlfFolder = argv[1];
+//	string MlfFile = argv[2];
+//	string MlfPath =  MlfFolder + MlfFile;
+	string MlfFolder = "good/god/";
+	string MlfPath = "VNA-1560-0-00WW-A01.mlf";
+	fstream ReadFromHere;
+	fstream WriteToHere;
 
-	if(argv[3]) 
-	{
-		WriteToHere << "echo \"Please do following action:\"\n"
-				<< "echo \"1. Set default configuration\"\n"
-				<< "echo \"2. Pre-config the device\"\n"
-				<< "echo \"Device will reboot after 30s when you finish the pre-config\"\n";
-	}
-	WriteToHere << "adb wait-for-device\n"
-			<< "sleep 30\n"
-			<< "echo \"\"\n"
-			<< "echo Reboot complete\n"
-			<< "echo \"\"";
-
-	ReadFromHere.close();
-	WriteToHere.close();
+	OpenReadFile(MlfPath, ReadFromHere);
+	OpenWriteFile(WriteToHere);
+	WriteToHere << "adb reboot bootloader\n";
+	Parser(ReadFromHere, WriteToHere, MlfFolder);
+	WriteToHere << "fastboot -i 0x489 reboot\n";
+	CloseReadFile(ReadFromHere);
+	CloseWriteFile(WriteToHere);
 	return 0;
 }
