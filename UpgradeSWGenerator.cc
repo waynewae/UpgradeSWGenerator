@@ -11,18 +11,10 @@ void OpenReadFile(string &mlf_path, fstream &ReadFromHere) {
 	else cout << "Open " << mlf_path << " successful.\n";
 }
 
-void CloseReadFile(fstream &ReadFromHere) {
-	ReadFromHere.close();
-}
-
 void OpenWriteFile(fstream &WriteToHere) {
 	WriteToHere.open("UpgradeSW.sh", ios::out | ios::trunc);
 	if(!WriteToHere) cout << "Open UpgradeSW.sh failed.\n";
 	else cout << "Open UpgradeSW.sh successful.\n\n";
-}
-
-void CloseWriteFile(fstream &WriteToHere) {
-	WriteToHere.close();
 }
 
 string SelectOpt(string &Opt) {
@@ -79,7 +71,7 @@ int main(int argc, char* argv[]) {
 	WriteToHere << "adb reboot bootloader\n";
 	Parser(ReadFromHere, WriteToHere, MlfFolder);
 	WriteToHere << "fastboot -i 0x489 reboot\n";
-	CloseReadFile(ReadFromHere);
-	CloseWriteFile(WriteToHere);
+	ReadFromHere.close();
+	WriteToHere.close();
 	return 0;
 }
